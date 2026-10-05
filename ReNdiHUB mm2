@@ -1,0 +1,1399 @@
+-- ═══════════════════════════════════════════════════════════
+-- ReNdiHUB — MM2 | Release 1.0
+-- Создатель: ReNdi | Telegram: https://t.me/botsereokieruderml
+-- Распространять запрещено 🚫
+-- ═══════════════════════════════════════════════════════════
+
+if not game:IsLoaded() then game.Loaded:Wait() end
+
+if _G.ReNdiHUB and _G.ReNdiHUB.Destroy then
+    pcall(function() _G.ReNdiHUB:Destroy() end)
+end
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local Lighting = game:GetService("Lighting")
+local Workspace = game:GetService("Workspace")
+local CoreGui = game:GetService("CoreGui")
+
+local LocalPlayer = Players.LocalPlayer
+local Camera = Workspace.CurrentCamera
+
+local TG_URL = "https://t.me/botsereokieruderml"
+
+-- ═══════════════════════════════════════════════════════════
+-- SUBSCRIBE (multi-storage)
+-- ═══════════════════════════════════════════════════════════
+
+local FLAG_PATHS = {
+    "ReNdi_subscribed.flag",
+    "ReNdi_subscribed_v2.flag",
+    "ReNdi/subscribed.txt",
+}
+
+local function hasSubscribed()
+    if _G._ReNdiSubscribed then return true end
+    if not readfile then return false end
+    for _, path in ipairs(FLAG_PATHS) do
+        local ok, content = pcall(function() return readfile(path) end)
+        if ok and content == "1" then
+            _G._ReNdiSubscribed = true
+            return true
+        end
+    end
+    return false
+end
+
+local function markSubscribed()
+    _G._ReNdiSubscribed = true
+    if not writefile then return end
+    for _, path in ipairs(FLAG_PATHS) do
+        pcall(function() writefile(path, "1") end)
+    end
+end
+
+local function showSubscribePopup()
+    return task.spawn(function()
+        local sg = Instance.new("ScreenGui")
+        sg.Name = "ReNdi_Sub"
+        sg.ResetOnSpawn = false
+        sg.IgnoreGuiInset = true
+        sg.DisplayOrder = 20000
+        sg.Parent = CoreGui
+
+        local frame = Instance.new("Frame")
+        frame.Size = UDim2.new(0, 360, 0, 200)
+        frame.Position = UDim2.new(0.5, -180, 0.5, -100)
+        frame.BackgroundColor3 = Color3.fromRGB(11, 12, 16)
+        frame.BorderSizePixel = 0
+        frame.Parent = sg
+        Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 14)
+        local st = Instance.new("UIStroke", frame)
+        st.Color = Color3.fromRGB(0, 255, 136)
+        st.Thickness = 1.2
+
+        local title = Instance.new("TextLabel", frame)
+        title.Size = UDim2.new(1, 0, 0, 44)
+        title.BackgroundTransparency = 1
+        title.Text = "ReNdiHUB"
+        title.TextColor3 = Color3.fromRGB(0, 255, 136)
+        title.Font = Enum.Font.GothamBlack
+        title.TextSize = 22
+
+        local sub = Instance.new("TextLabel", frame)
+        sub.Size = UDim2.new(1, -30, 0, 50)
+        sub.Position = UDim2.new(0, 15, 0, 50)
+        sub.BackgroundTransparency = 1
+        sub.Text = "Подпишись на канал чтобы\nпользоваться скриптом"
+        sub.TextColor3 = Color3.fromRGB(200, 200, 210)
+        sub.Font = Enum.Font.Gotham
+        sub.TextSize = 13
+        sub.TextWrapped = true
+
+        local btn = Instance.new("TextButton", frame)
+        btn.Size = UDim2.new(1, -30, 0, 50)
+        btn.Position = UDim2.new(0, 15, 0, 120)
+        btn.BackgroundColor3 = Color3.fromRGB(30, 100, 180)
+        btn.Text = "📢  ПОДПИСАТЬСЯ"
+        btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        btn.Font = Enum.Font.GothamBold
+        btn.TextSize = 16
+        btn.BorderSizePixel = 0
+        Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 10)
+
+        local finished = false
+        btn.MouseButton1Click:Connect(function()
+            if finished then return end
+            finished = true
+            pcall(function()
+                if setclipboard then setclipboard(TG_URL) end
+            end)
+            pcall(function()
+                if request then request({Url = TG_URL, Method = "GET"}) end
+            end)
+            pcall(function() game:HttpGet(TG_URL) end)
+            markSubscribed()
+            sg:Destroy()
+        end)
+
+        while not finished do task.wait(0.1) end
+    end)
+end
+
+if not hasSubscribed() then
+    showSubscribePopup()
+end
+
+-- ═══════════════════════════════════════════════════════════
+-- SUNSET SKY (принудительно, без выключателя)
+-- ═══════════════════════════════════════════════════════════
+
+local sunsetConn = nil
+
+local function applySunset()
+    local origSky = Lighting:FindFirstChildOfClass("Sky")
+    local origAtmo = Lighting:FindFirstChildOfClass("Atmosphere")
+    if origSky then origSky.Parent = nil end
+    if origAtmo then origAtmo.Parent = nil end
+
+    for _, obj in ipairs(Lighting:GetChildren()) do
+        if obj.Name:sub(1, 5) == "ReNdi" then
+            pcall(function() obj:Destroy() end)
+        end
+    end
+
+    local sky = Instance.new("Sky")
+    sky.Name = "ReNdiSunsetSky"
+    sky.SkyboxBk = "rbxasset://sky/bk.jpg"
+    sky.SkyboxDn = "rbxasset://sky/dn.jpg"
+    sky.SkyboxFt = "rbxasset://sky/ft.jpg"
+    sky.SkyboxLf = "rbxasset://sky/lf.jpg"
+    sky.SkyboxRt = "rbxasset://sky/rt.jpg"
+    sky.SkyboxUp = "rbxasset://sky/up.jpg"
+    sky.StarCount = 0
+    sky.SunAngularSize = 21
+    sky.MoonAngularSize = 0
+    sky.Parent = Lighting
+
+    Lighting.ClockTime = 17.3
+    Lighting.Brightness = 1.8
+    Lighting.Ambient = Color3.fromRGB(180, 110, 70)
+    Lighting.OutdoorAmbient = Color3.fromRGB(255, 160, 90)
+    Lighting.ColorShift_Top = Color3.fromRGB(255, 140, 70)
+    Lighting.ColorShift_Bottom = Color3.fromRGB(120, 40, 20)
+    Lighting.FogColor = Color3.fromRGB(255, 140, 80)
+    Lighting.FogStart = 100
+    Lighting.FogEnd = 4000
+    Lighting.GlobalShadows = true
+
+    local atmos = Instance.new("Atmosphere")
+    atmos.Name = "ReNdiSunsetAtmos"
+    atmos.Density = 0.35
+    atmos.Offset = 0.2
+    atmos.Color = Color3.fromRGB(255, 150, 80)
+    atmos.Decay = Color3.fromRGB(180, 80, 40)
+    atmos.Glare = 0.6
+    atmos.Haze = 2.5
+    atmos.Parent = Lighting
+
+    local sunRays = Instance.new("SunRaysEffect")
+    sunRays.Name = "ReNdiSunsetRays"
+    sunRays.Intensity = 0.15
+    sunRays.Spread = 0.8
+    sunRays.Parent = Lighting
+
+    local bloom = Instance.new("BloomEffect")
+    bloom.Name = "ReNdiSunsetBloom"
+    bloom.Intensity = 0.8
+    bloom.Size = 24
+    bloom.Threshold = 1.2
+    bloom.Parent = Lighting
+
+    local cc = Instance.new("ColorCorrectionEffect")
+    cc.Name = "ReNdiSunsetCC"
+    cc.TintColor = Color3.fromRGB(255, 200, 150)
+    cc.Brightness = 0.05
+    cc.Contrast = 0.1
+    cc.Saturation = 0.15
+    cc.Parent = Lighting
+
+    local fallTime = 17.3
+    if sunsetConn then sunsetConn:Disconnect() end
+    sunsetConn = RunService.Heartbeat:Connect(function(dt)
+        fallTime = fallTime + dt * 0.02
+        if fallTime > 18 then fallTime = 17.0 end
+        Lighting.ClockTime = fallTime
+    end)
+end
+
+applySunset()
+
+-- ═══════════════════════════════════════════════════════════
+-- CONFIG
+-- ═══════════════════════════════════════════════════════════
+
+local Config = {
+    ESP = false, ESPBox = true, ESPName = true,
+    ESPDistance = true, ESPRoles = true, MaxDist = 2000,
+    AIM = false, AIMOnlyMurderer = true, AIMVisible = true,
+    AIMRequireGun = true, FOV = 180, Smooth = 0.25,
+    Fly = false, FlySpeed = 55, Noclip = false,
+    Speed = false, SpeedValue = 32,
+    CoinBot = false, CoinRange = 500, CoinDelay = 0.05,
+    Spin = false, SpinSpeed = 5,
+    CustomModel = false, WalkAnim = true, HoldTool = true,
+}
+
+local COL = Color3.fromRGB(0, 255, 136)
+local DIM = Color3.fromRGB(14, 32, 24)
+local DEEP = Color3.fromRGB(0, 190, 105)
+
+local function create(class, props, parent)
+    local o = Instance.new(class)
+    for k, v in pairs(props or {}) do o[k] = v end
+    o.Parent = parent
+    return o
+end
+
+local IS_MOBILE = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
+local viewport = Camera.ViewportSize
+local UI_SCALE = math.clamp(viewport.X / 800, 0.75, 1.25)
+local Drawing = Drawing or (getgenv and getgenv().Drawing)
+
+-- ═══════════════════════════════════════════════════════════
+-- UTIL
+-- ═══════════════════════════════════════════════════════════
+
+local function isSpawned(plr)
+    local char = plr.Character
+    if not char then return false end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    return hum and hrp and hum.Health > 0
+end
+
+local function getRole(plr)
+    local char = plr.Character
+    if not char then return nil end
+    local role = char:GetAttribute("Role") or plr:GetAttribute("Role")
+    if role then return tostring(role):lower() end
+    local bp = plr:FindFirstChildOfClass("Backpack")
+    if bp then
+        if bp:FindFirstChild("Knife") then return "murderer" end
+        if bp:FindFirstChild("Gun") then return "sheriff" end
+    end
+    if char:FindFirstChild("Knife") then return "murderer" end
+    if char:FindFirstChild("Gun") then return "sheriff" end
+    for _, obj in ipairs(char:GetDescendants()) do
+        if obj:IsA("Tool") then
+            local n = obj.Name:lower()
+            if n:find("knife") then return "murderer" end
+            if n:find("gun") then return "sheriff" end
+        end
+    end
+    return "innocent"
+end
+
+local function roleColor(role)
+    if role == "murderer" then return Color3.fromRGB(255, 45, 60) end
+    if role == "sheriff" then return Color3.fromRGB(60, 130, 255) end
+    return Color3.fromRGB(0, 230, 130)
+end
+
+local function hasGun()
+    local char = LocalPlayer.Character
+    if not char then return false end
+    local bp = LocalPlayer:FindFirstChildOfClass("Backpack")
+    if char:FindFirstChild("Gun") then return true end
+    if bp and bp:FindFirstChild("Gun") then return true end
+    for _, obj in ipairs(char:GetDescendants()) do
+        if obj:IsA("Tool") and obj.Name:lower():find("gun") then return true end
+    end
+    return false
+end
+
+local function isVisible(targetPart)
+    if not targetPart then return false end
+    local origin = Camera.CFrame.Position
+    local dir = targetPart.Position - origin
+    local params = RaycastParams.new()
+    params.FilterType = Enum.RaycastFilterType.Exclude
+    params.FilterDescendantsInstances = { LocalPlayer.Character, Camera }
+    local r = Workspace:Raycast(origin, dir, params)
+    if not r then return true end
+    if r.Instance then
+        local m = r.Instance:FindFirstAncestorOfClass("Model")
+        if m and Players:GetPlayerFromCharacter(m) then return true end
+    end
+    return false
+end
+
+-- ═══════════════════════════════════════════════════════════
+-- CUSTOM MODEL (Noob, правильно)
+-- ═══════════════════════════════════════════════════════════
+
+local NOOB_COLORS = {
+    head = Color3.fromRGB(245, 205, 48),
+    torso = Color3.fromRGB(0, 143, 156),
+    arm = Color3.fromRGB(245, 205, 48),
+    leg = Color3.fromRGB(75, 151, 75),
+}
+
+local FACE_TEXTURE = "rbxasset://textures/face.png"
+
+local noobFolder = nil
+local noobConn = nil
+local noobMotors = {}
+local noobParts = {}
+local savedTransparency = {}
+local walkPhase = 0
+
+local function createPart(name, size, color, parent)
+    local p = Instance.new("Part")
+    p.Name = name
+    p.Size = size
+    p.Color = color
+    p.Material = Enum.Material.Plastic
+    p.TopSurface = Enum.SurfaceType.Smooth
+    p.BottomSurface = Enum.SurfaceType.Smooth
+    p.Anchored = false
+    p.CanCollide = false
+    p.Massless = true
+    p.CastShadow = true
+    p.Parent = parent
+    return p
+end
+
+local function createMotor(name, part0, part1, c0, c1, parent)
+    local m = Instance.new("Motor6D")
+    m.Name = name
+    m.Part0 = part0
+    m.Part1 = part1
+    m.C0 = c0
+    m.C1 = c1
+    m.Parent = parent or part0
+    return m
+end
+
+local function clearNoob()
+    if noobConn then noobConn:Disconnect() noobConn = nil end
+    if noobFolder then pcall(function() noobFolder:Destroy() end) noobFolder = nil end
+    noobMotors = {}
+    noobParts = {}
+    local char = LocalPlayer.Character
+    if char then
+        for obj, data in pairs(savedTransparency) do
+            if obj and obj.Parent then
+                pcall(function()
+                    obj.Transparency = data.trans
+                    if data.ltm ~= nil then
+                        obj.LocalTransparencyModifier = data.ltm
+                    end
+                end)
+            end
+        end
+    end
+    savedTransparency = {}
+end
+
+local function hideOriginal()
+    local char = LocalPlayer.Character
+    if not char then return end
+    savedTransparency = {}
+    for _, p in ipairs(char:GetDescendants()) do
+        if p:IsA("BasePart") then
+            savedTransparency[p] = {trans = p.Transparency, ltm = p.LocalTransparencyModifier}
+            p.Transparency = 1
+            p.LocalTransparencyModifier = 1
+        elseif p:IsA("Decal") or p:IsA("Texture") then
+            savedTransparency[p] = {trans = p.Transparency, ltm = 0}
+            p.Transparency = 1
+        elseif p:IsA("Accessory") or p:IsA("Accoutrement") then
+            for _, h in ipairs(p:GetDescendants()) do
+                if h:IsA("BasePart") then
+                    savedTransparency[h] = {trans = h.Transparency, ltm = h.LocalTransparencyModifier}
+                    h.Transparency = 1
+                    h.LocalTransparencyModifier = 1
+                end
+            end
+        end
+    end
+end
+
+local function applyNoob()
+    clearNoob()
+    if not Config.CustomModel then return end
+
+    local char = LocalPlayer.Character
+    if not char then return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+
+    noobFolder = Instance.new("Folder")
+    noobFolder.Name = "ReNdiCustomModel"
+    noobFolder.Parent = Workspace
+
+    local head = createPart("Head", Vector3.new(2, 1, 1), NOOB_COLORS.head, noobFolder)
+    local torso = createPart("Torso", Vector3.new(2, 2, 1), NOOB_COLORS.torso, noobFolder)
+    local leftArm = createPart("Left Arm", Vector3.new(1, 2, 1), NOOB_COLORS.arm, noobFolder)
+    local rightArm = createPart("Right Arm", Vector3.new(1, 2, 1), NOOB_COLORS.arm, noobFolder)
+    local leftLeg = createPart("Left Leg", Vector3.new(1, 2, 1), NOOB_COLORS.leg, noobFolder)
+    local rightLeg = createPart("Right Leg", Vector3.new(1, 2, 1), NOOB_COLORS.leg, noobFolder)
+
+    noobParts = {
+        head = head, torso = torso,
+        leftArm = leftArm, rightArm = rightArm,
+        leftLeg = leftLeg, rightLeg = rightLeg,
+    }
+
+    local face = Instance.new("Decal")
+    face.Name = "face"
+    face.Texture = FACE_TEXTURE
+    face.Face = Enum.NormalId.Front
+    face.Parent = head
+
+    noobMotors.neck = createMotor("Neck", torso, head,
+        CFrame.new(0, 1, 0), CFrame.new(0, -0.5, 0))
+    noobMotors.leftShoulder = createMotor("Left Shoulder", torso, leftArm,
+        CFrame.new(-1, 0.5, 0), CFrame.new(0.5, 0.5, 0))
+    noobMotors.rightShoulder = createMotor("Right Shoulder", torso, rightArm,
+        CFrame.new(1, 0.5, 0), CFrame.new(-0.5, 0.5, 0))
+    noobMotors.leftHip = createMotor("Left Hip", torso, leftLeg,
+        CFrame.new(-0.5, -1, 0), CFrame.new(0, 1, 0))
+    noobMotors.rightHip = createMotor("Right Hip", torso, rightLeg,
+        CFrame.new(0.5, -1, 0), CFrame.new(0, 1, 0))
+    noobMotors.root = createMotor("RootJoint", hrp, torso,
+        CFrame.new(0, 0, 0), CFrame.new(0, 0, 0), hrp)
+
+    hideOriginal()
+
+    noobConn = RunService.RenderStepped:Connect(function(dt)
+        if not noobFolder then return end
+        local c = LocalPlayer.Character
+        if not c then return end
+        local h = c:FindFirstChild("HumanoidRootPart")
+        if not h then return end
+
+        local t = noobParts.torso
+        if t and t.Parent then
+            t.CFrame = h.CFrame
+        end
+
+        local hum = c:FindFirstChildOfClass("Humanoid")
+        local speed = 0
+        if hum then speed = hum.MoveDirection.Magnitude * (hum.WalkSpeed or 16) end
+
+        if speed > 0.5 then
+            walkPhase = walkPhase + dt * math.clamp(speed / 4, 2, 8)
+        else
+            walkPhase = walkPhase + dt * 0.5
+        end
+
+        local leftShoulderC0 = CFrame.new(-1, 0.5, 0)
+        local rightShoulderC0 = CFrame.new(1, 0.5, 0)
+        local leftHipC0 = CFrame.new(-0.5, -1, 0)
+        local rightHipC0 = CFrame.new(0.5, -1, 0)
+
+        if Config.WalkAnim and speed > 0.5 then
+            local armSwing = math.sin(walkPhase) * math.rad(40)
+            local legSwing = math.sin(walkPhase) * math.rad(45)
+            leftShoulderC0 = CFrame.new(-1, 0.5, 0) * CFrame.Angles(armSwing, 0, 0)
+            rightShoulderC0 = CFrame.new(1, 0.5, 0) * CFrame.Angles(-armSwing, 0, 0)
+            leftHipC0 = CFrame.new(-0.5, -1, 0) * CFrame.Angles(-legSwing, 0, 0)
+            rightHipC0 = CFrame.new(0.5, -1, 0) * CFrame.Angles(legSwing, 0, 0)
+        end
+
+        if Config.HoldTool then
+            local tool = c:FindFirstChildOfClass("Tool")
+            if tool then
+                rightShoulderC0 = CFrame.new(1, 0.5, 0) * CFrame.Angles(math.rad(-90), 0, 0)
+            end
+        end
+
+        if noobMotors.leftShoulder then noobMotors.leftShoulder.C0 = leftShoulderC0 end
+        if noobMotors.rightShoulder then noobMotors.rightShoulder.C0 = rightShoulderC0 end
+        if noobMotors.leftHip then noobMotors.leftHip.C0 = leftHipC0 end
+        if noobMotors.rightHip then noobMotors.rightHip.C0 = rightHipC0 end
+    end)
+end
+
+-- ═══════════════════════════════════════════════════════════
+-- LOADING
+-- ═══════════════════════════════════════════════════════════
+
+local LoadingGui = create("ScreenGui", {
+    Name = "ReNdiHUB_Load", ResetOnSpawn = false,
+    IgnoreGuiInset = true, DisplayOrder = 9999,
+}, CoreGui)
+
+local LoadBg = create("Frame", {
+    Size = UDim2.new(1, 0, 1, 0),
+    BackgroundColor3 = Color3.fromRGB(0, 0, 0),
+    BorderSizePixel = 0,
+}, LoadingGui)
+
+create("TextLabel", {
+    Size = UDim2.new(1, 0, 0, 60),
+    Position = UDim2.new(0, 0, 0.5, -40),
+    BackgroundTransparency = 1, Text = "ReNdiHUB",
+    TextColor3 = COL, Font = Enum.Font.GothamBlack, TextSize = 38,
+}, LoadBg)
+
+create("TextLabel", {
+    Size = UDim2.new(1, 0, 0, 24),
+    Position = UDim2.new(0, 0, 0.5, 10),
+    BackgroundTransparency = 1, Text = "Release 1.0",
+    TextColor3 = Color3.fromRGB(150, 150, 150),
+    Font = Enum.Font.Gotham, TextSize = 16,
+}, LoadBg)
+
+task.wait(3)
+TweenService:Create(LoadBg, TweenInfo.new(0.5), { BackgroundTransparency = 1 }):Play()
+task.wait(0.6)
+LoadingGui:Destroy()
+
+-- ═══════════════════════════════════════════════════════════
+-- NOTIFICATIONS
+-- ═══════════════════════════════════════════════════════════
+
+local NotifGui = create("ScreenGui", {
+    Name = "ReNdiHUB_Notifs", ResetOnSpawn = false,
+    IgnoreGuiInset = true, DisplayOrder = 100,
+}, CoreGui)
+
+local notifHolder = create("Frame", {
+    Size = UDim2.new(0, 260 * UI_SCALE, 1, -120),
+    Position = UDim2.new(1, -270 * UI_SCALE, 0, 60),
+    BackgroundTransparency = 1,
+}, NotifGui)
+create("UIListLayout", {
+    FillDirection = Enum.FillDirection.Vertical,
+    VerticalAlignment = Enum.VerticalAlignment.Bottom,
+    HorizontalAlignment = Enum.HorizontalAlignment.Right,
+    Padding = UDim.new(0, 6),
+}, notifHolder)
+
+local function notify(text)
+    local f = create("Frame", {
+        Size = UDim2.new(1, 0, 0, 36 * UI_SCALE),
+        BackgroundColor3 = Color3.fromRGB(15, 17, 22),
+        BackgroundTransparency = 1, BorderSizePixel = 0,
+    }, notifHolder)
+    create("UICorner", { CornerRadius = UDim.new(0, 9) }, f)
+    local lbl = create("TextLabel", {
+        Size = UDim2.new(1, -20, 1, 0),
+        Position = UDim2.new(0, 14, 0, 0),
+        BackgroundTransparency = 1, Text = text,
+        TextColor3 = Color3.fromRGB(230, 230, 235),
+        Font = Enum.Font.Gotham, TextSize = 13 * UI_SCALE,
+        TextXAlignment = Enum.TextXAlignment.Left, TextTransparency = 1,
+    }, f)
+    TweenService:Create(f, TweenInfo.new(0.3), { BackgroundTransparency = 0.05 }):Play()
+    TweenService:Create(lbl, TweenInfo.new(0.3), { TextTransparency = 0 }):Play()
+    task.delay(2.4, function()
+        TweenService:Create(f, TweenInfo.new(0.4), { BackgroundTransparency = 1 }):Play()
+        TweenService:Create(lbl, TweenInfo.new(0.4), { TextTransparency = 1 }):Play()
+        task.wait(0.5)
+        if f then f:Destroy() end
+    end)
+end
+
+-- ═══════════════════════════════════════════════════════════
+-- WATERMARK
+-- ═══════════════════════════════════════════════════════════
+
+local WMGui = create("ScreenGui", {
+    Name = "ReNdiHUB_WM", ResetOnSpawn = false,
+    IgnoreGuiInset = true, DisplayOrder = 200,
+}, CoreGui)
+
+local WM = create("TextButton", {
+    Size = UDim2.new(0, 250 * UI_SCALE, 0, 40 * UI_SCALE),
+    Position = UDim2.new(1, -262 * UI_SCALE, 0, 12 * UI_SCALE),
+    BackgroundColor3 = Color3.fromRGB(12, 13, 17),
+    BackgroundTransparency = 0.15, Text = "",
+    BorderSizePixel = 0, AutoButtonColor = false,
+}, WMGui)
+create("UICorner", { CornerRadius = UDim.new(0, 10) }, WM)
+create("UIStroke", { Color = COL, Thickness = 1.2, Transparency = 0.25 }, WM)
+
+create("TextLabel", {
+    Size = UDim2.new(1, -16, 1, 0),
+    Position = UDim2.new(0, 8, 0, 0),
+    BackgroundTransparency = 1,
+    Text = "ReNdiHUB v1.0",
+    TextColor3 = COL, Font = Enum.Font.GothamBlack,
+    TextSize = 14 * UI_SCALE,
+    TextXAlignment = Enum.TextXAlignment.Center,
+}, WM)
+
+-- ═══════════════════════════════════════════════════════════
+-- MAIN GUI
+-- ═══════════════════════════════════════════════════════════
+
+local ScreenGui = create("ScreenGui", {
+    Name = "ReNdiHUB", ResetOnSpawn = false,
+    IgnoreGuiInset = true,
+    ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+}, CoreGui)
+_G.ReNdiHUB = ScreenGui
+
+local MAIN_W = 540
+local MAIN_H = 420
+
+local Main = create("Frame", {
+    Name = "Main",
+    Size = UDim2.new(0, MAIN_W * UI_SCALE, 0, MAIN_H * UI_SCALE),
+    Position = UDim2.new(0.5, -MAIN_W * UI_SCALE / 2, 0.5, -MAIN_H * UI_SCALE / 2),
+    BackgroundColor3 = Color3.fromRGB(12, 13, 17),
+    BorderSizePixel = 0, Active = true, Draggable = true,
+    ClipsDescendants = true, Visible = false,
+}, ScreenGui)
+create("UICorner", { CornerRadius = UDim.new(0, 14) }, Main)
+create("UIStroke", { Color = COL, Thickness = 1, Transparency = 0.3 }, Main)
+
+local Header = create("Frame", {
+    Size = UDim2.new(1, 0, 0, 44 * UI_SCALE),
+    BackgroundColor3 = Color3.fromRGB(20, 22, 28),
+    BorderSizePixel = 0,
+}, Main)
+create("UICorner", { CornerRadius = UDim.new(0, 14) }, Header)
+
+create("TextLabel", {
+    Size = UDim2.new(1, -100, 1, 0),
+    Position = UDim2.new(0, 16, 0, 0),
+    BackgroundTransparency = 1, Text = "ReNdiHUB v1.0",
+    TextColor3 = COL, Font = Enum.Font.GothamBlack,
+    TextSize = 16 * UI_SCALE,
+    TextXAlignment = Enum.TextXAlignment.Left,
+}, Header)
+
+local CloseBtn = create("TextButton", {
+    Size = UDim2.new(0, 32 * UI_SCALE, 0, 32 * UI_SCALE),
+    Position = UDim2.new(1, -38 * UI_SCALE, 0, 6 * UI_SCALE),
+    BackgroundColor3 = Color3.fromRGB(46, 20, 24),
+    Text = "×", TextColor3 = Color3.fromRGB(255, 120, 130),
+    Font = Enum.Font.GothamBold, TextSize = 19 * UI_SCALE,
+    BorderSizePixel = 0, AutoButtonColor = false,
+}, Header)
+create("UICorner", { CornerRadius = UDim.new(0, 9) }, CloseBtn)
+
+local TabRow = create("Frame", {
+    Size = UDim2.new(0, 120 * UI_SCALE, 1, -100 * UI_SCALE),
+    Position = UDim2.new(0, 8 * UI_SCALE, 0, 50 * UI_SCALE),
+    BackgroundTransparency = 1,
+}, Main)
+
+local Tabs = {}
+local TabButtons = {}
+local tabKeys = { "AIM", "VISUAL", "MOVE", "FARM", "EXTRA", "LINKS" }
+
+for i, key in ipairs(tabKeys) do
+    local btn = create("TextButton", {
+        Size = UDim2.new(1, -8 * UI_SCALE, 0, 32 * UI_SCALE),
+        Position = UDim2.new(0, 4 * UI_SCALE, 0, (i - 1) * 38 * UI_SCALE),
+        BackgroundColor3 = Color3.fromRGB(22, 24, 30),
+        Text = key, TextColor3 = Color3.fromRGB(150, 150, 160),
+        Font = Enum.Font.GothamBold, TextSize = 11 * UI_SCALE,
+        BorderSizePixel = 0, AutoButtonColor = false,
+    }, TabRow)
+    create("UICorner", { CornerRadius = UDim.new(0, 8) }, btn)
+    TabButtons[key] = btn
+end
+
+local Content = create("Frame", {
+    Size = UDim2.new(1, -140 * UI_SCALE, 1, -90 * UI_SCALE),
+    Position = UDim2.new(0, 130 * UI_SCALE, 0, 52 * UI_SCALE),
+    BackgroundTransparency = 1, ClipsDescendants = true,
+}, Main)
+
+create("TextLabel", {
+    Size = UDim2.new(1, -16, 0, 30 * UI_SCALE),
+    Position = UDim2.new(0, 8 * UI_SCALE, 1, -36 * UI_SCALE),
+    BackgroundTransparency = 1,
+    Text = "Создатель: ReNdi  |  Распространять запрещено 🚫",
+    TextColor3 = Color3.fromRGB(120, 120, 130),
+    Font = Enum.Font.Gotham, TextSize = 10 * UI_SCALE,
+    TextXAlignment = Enum.TextXAlignment.Center,
+}, Main)
+
+local function newPage()
+    return create("ScrollingFrame", {
+        Size = UDim2.new(1, 0, 1, 0),
+        BackgroundTransparency = 1, BorderSizePixel = 0,
+        ScrollBarThickness = 2, ScrollBarImageColor3 = COL,
+        CanvasSize = UDim2.new(0, 0, 0, 0),
+        AutomaticCanvasSize = Enum.AutomaticSize.Y,
+        Visible = false,
+    }, Content)
+end
+
+for _, key in ipairs(tabKeys) do
+    Tabs[key] = newPage()
+    create("UIListLayout", {
+        Padding = UDim.new(0, 6),
+        SortOrder = Enum.SortOrder.LayoutOrder,
+    }, Tabs[key])
+    create("UIPadding", { PaddingTop = UDim.new(0, 4) }, Tabs[key])
+end
+
+local function selectTab(key)
+    for k, page in pairs(Tabs) do
+        page.Visible = (k == key)
+        local active = (k == key)
+        TabButtons[k].TextColor3 = active and COL or Color3.fromRGB(150, 150, 160)
+        TabButtons[k].BackgroundColor3 = active and DIM or Color3.fromRGB(22, 24, 30)
+    end
+end
+
+local function newToggle(parent, label, getter, setter, expandContent)
+    local holder = create("Frame", {
+        Size = UDim2.new(1, -8, 0, 40 * UI_SCALE),
+        BackgroundColor3 = Color3.fromRGB(18, 20, 25),
+        BorderSizePixel = 0,
+    }, parent)
+    create("UICorner", { CornerRadius = UDim.new(0, 10) }, holder)
+
+    create("TextLabel", {
+        Size = UDim2.new(0.75, 0, 1, 0),
+        Position = UDim2.new(0, 14, 0, 0),
+        BackgroundTransparency = 1, Text = label,
+        TextColor3 = Color3.fromRGB(225, 225, 230),
+        Font = Enum.Font.Gotham, TextSize = 13 * UI_SCALE,
+        TextXAlignment = Enum.TextXAlignment.Left,
+    }, holder)
+
+    local state = getter()
+    local btn = create("TextButton", {
+        Size = UDim2.new(0, 56 * UI_SCALE, 0, 26 * UI_SCALE),
+        Position = UDim2.new(1, -64 * UI_SCALE, 0, 7 * UI_SCALE),
+        BackgroundColor3 = state and DEEP or Color3.fromRGB(42, 44, 50),
+        Text = state and "ON" or "OFF",
+        TextColor3 = Color3.fromRGB(255, 255, 255),
+        Font = Enum.Font.GothamBold, TextSize = 12 * UI_SCALE,
+        BorderSizePixel = 0, AutoButtonColor = false,
+    }, holder)
+    create("UICorner", { CornerRadius = UDim.new(0, 9) }, btn)
+
+    local expandFrame
+    if expandContent then
+        expandFrame = create("Frame", {
+            Size = UDim2.new(1, -8, 0, 0),
+            BackgroundColor3 = Color3.fromRGB(14, 15, 19),
+            BorderSizePixel = 0, ClipsDescendants = true,
+        }, parent)
+        create("UICorner", { CornerRadius = UDim.new(0, 10) }, expandFrame)
+        create("UIListLayout", {
+            Padding = UDim.new(0, 4),
+            SortOrder = Enum.SortOrder.LayoutOrder,
+        }, expandFrame)
+        create("UIPadding", {
+            PaddingTop = UDim.new(0, 4), PaddingBottom = UDim.new(0, 4),
+            PaddingLeft = UDim.new(0, 6), PaddingRight = UDim.new(0, 6),
+        }, expandFrame)
+        expandContent(expandFrame)
+    end
+
+    local expanded = state
+    local function updateExpand()
+        if not expandFrame then return end
+        local target
+        if expanded then
+            target = UDim2.new(1, -8, 0,
+                expandFrame.UIListLayout.AbsoluteContentSize.Y + 8)
+        else
+            target = UDim2.new(1, -8, 0, 0)
+        end
+        TweenService:Create(expandFrame, TweenInfo.new(0.35,
+            Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+            Size = target,
+        }):Play()
+    end
+
+    btn.MouseButton1Click:Connect(function()
+        local new = not getter()
+        setter(new)
+        btn.BackgroundColor3 = new and DEEP or Color3.fromRGB(42, 44, 50)
+        btn.Text = new and "ON" or "OFF"
+        notify(label .. ": " .. (new and "вкл" or "выкл"))
+        if expandFrame then
+            expanded = new
+            updateExpand()
+        end
+    end)
+
+    if expandFrame then
+        task.wait(0.1)
+        updateExpand()
+    end
+end
+
+local function newSlider(parent, label, min, max, getter, setter)
+    local holder = create("Frame", {
+        Size = UDim2.new(1, -8, 0, 56 * UI_SCALE),
+        BackgroundColor3 = Color3.fromRGB(18, 20, 25),
+        BorderSizePixel = 0,
+    }, parent)
+    create("UICorner", { CornerRadius = UDim.new(0, 10) }, holder)
+
+    local lbl = create("TextLabel", {
+        Size = UDim2.new(1, -16, 0, 20 * UI_SCALE),
+        Position = UDim2.new(0, 12, 0, 4),
+        BackgroundTransparency = 1,
+        Text = label .. ": " .. getter(),
+        TextColor3 = Color3.fromRGB(225, 225, 230),
+        Font = Enum.Font.Gotham, TextSize = 12 * UI_SCALE,
+        TextXAlignment = Enum.TextXAlignment.Left,
+    }, holder)
+
+    local track = create("TextButton", {
+        Size = UDim2.new(1, -24, 0, 14 * UI_SCALE),
+        Position = UDim2.new(0, 12, 0, 30 * UI_SCALE),
+        BackgroundColor3 = Color3.fromRGB(32, 34, 40),
+        Text = "", BorderSizePixel = 0, AutoButtonColor = false,
+    }, holder)
+    create("UICorner", { CornerRadius = UDim.new(0, 8) }, track)
+    local fill = create("Frame", {
+        Size = UDim2.new((getter() - min) / (max - min), 0, 1, 0),
+        BackgroundColor3 = COL, BorderSizePixel = 0,
+    }, track)
+    create("UICorner", { CornerRadius = UDim.new(0, 8) }, fill)
+
+    local dragging = false
+    local function update(input)
+        local rel = math.clamp(
+            (input.Position.X - track.AbsolutePosition.X) / track.AbsoluteSize.X, 0, 1)
+        local val = math.floor(min + (max - min) * rel)
+        fill.Size = UDim2.new(rel, 0, 1, 0)
+        lbl.Text = label .. ": " .. val
+        setter(val)
+    end
+    track.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.Touch
+        or input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true update(input)
+        end
+    end)
+    track.InputChanged:Connect(function(input)
+        if dragging and (input.UserInputType == Enum.UserInputType.Touch
+        or input.UserInputType == Enum.UserInputType.MouseMovement) then
+            update(input)
+        end
+    end)
+    track.InputEnded:Connect(function() dragging = false end)
+end
+
+-- AIM
+newToggle(Tabs.AIM, "Аим", function() return Config.AIM end,
+    function(v) Config.AIM = v end,
+    function(frame)
+        newToggle(frame, "Только на убийцу", function() return Config.AIMOnlyMurderer end,
+            function(v) Config.AIMOnlyMurderer = v end)
+        newToggle(frame, "Проверка видимости", function() return Config.AIMVisible end,
+            function(v) Config.AIMVisible = v end)
+        newToggle(frame, "Требовать пистолет", function() return Config.AIMRequireGun end,
+            function(v) Config.AIMRequireGun = v end)
+        newSlider(frame, "ФОВ", 20, 600, function() return Config.FOV end,
+            function(v) Config.FOV = v end)
+        newSlider(frame, "Сглаживание", 1, 100,
+            function() return math.floor(Config.Smooth * 100) end,
+            function(v) Config.Smooth = v / 100 end)
+    end)
+
+-- VISUAL
+newToggle(Tabs.VISUAL, "ESP", function() return Config.ESP end,
+    function(v) Config.ESP = v end,
+    function(frame)
+        newToggle(frame, "Бокс", function() return Config.ESPBox end,
+            function(v) Config.ESPBox = v end)
+        newToggle(frame, "Имя", function() return Config.ESPName end,
+            function(v) Config.ESPName = v end)
+        newToggle(frame, "Дистанция", function() return Config.ESPDistance end,
+            function(v) Config.ESPDistance = v end)
+        newToggle(frame, "Цвета ролей", function() return Config.ESPRoles end,
+            function(v) Config.ESPRoles = v end)
+        newSlider(frame, "Макс. дистанция", 100, 3000,
+            function() return Config.MaxDist end,
+            function(v) Config.MaxDist = v end)
+    end)
+
+newToggle(Tabs.VISUAL, "Кастом модель", function() return Config.CustomModel end,
+    function(v)
+        Config.CustomModel = v
+        applyNoob()
+    end,
+    function(frame)
+        newToggle(frame, "Анимация ходьбы", function() return Config.WalkAnim end,
+            function(v) Config.WalkAnim = v end)
+        newToggle(frame, "Рука тянется к предмету", function() return Config.HoldTool end,
+            function(v) Config.HoldTool = v end)
+    end)
+
+-- MOVE
+newToggle(Tabs.MOVE, "Fly", function() return Config.Fly end,
+    function(v) Config.Fly = v end,
+    function(frame)
+        newSlider(frame, "Fly speed", 10, 300,
+            function() return Config.FlySpeed end,
+            function(v) Config.FlySpeed = v end)
+    end)
+
+newToggle(Tabs.MOVE, "Noclip", function() return Config.Noclip end,
+    function(v) Config.Noclip = v end)
+
+newToggle(Tabs.MOVE, "Speedhack", function() return Config.Speed end,
+    function(v) Config.Speed = v end,
+    function(frame)
+        newSlider(frame, "WalkSpeed", 16, 300,
+            function() return Config.SpeedValue end,
+            function(v) Config.SpeedValue = v end)
+    end)
+
+-- FARM
+newToggle(Tabs.FARM, "Авто-сбор (быстрый)", function() return Config.CoinBot end,
+    function(v) Config.CoinBot = v end,
+    function(frame)
+        newSlider(frame, "Радиус поиска", 20, 1000,
+            function() return Config.CoinRange end,
+            function(v) Config.CoinRange = v end)
+        newSlider(frame, "Задержка ТП (x0.01)", 1, 50,
+            function() return math.floor(Config.CoinDelay * 100) end,
+            function(v) Config.CoinDelay = v / 100 end)
+    end)
+
+-- EXTRA
+newToggle(Tabs.EXTRA, "Spin", function() return Config.Spin end,
+    function(v) Config.Spin = v end,
+    function(frame)
+        newSlider(frame, "Spin speed", 1, 30,
+            function() return Config.SpinSpeed end,
+            function(v) Config.SpinSpeed = v end)
+    end)
+
+-- LINKS
+local tgBtn = create("TextButton", {
+    Size = UDim2.new(1, -8, 0, 60 * UI_SCALE),
+    BackgroundColor3 = Color3.fromRGB(30, 100, 180),
+    Text = "📢 Telegram канал\nhttps://t.me/botsereokieruderml",
+    TextColor3 = Color3.fromRGB(255, 255, 255),
+    Font = Enum.Font.GothamBold,
+    TextSize = 13 * UI_SCALE,
+    BorderSizePixel = 0,
+    AutoButtonColor = false,
+}, Tabs.LINKS)
+create("UICorner", { CornerRadius = UDim.new(0, 10) }, tgBtn)
+
+tgBtn.MouseButton1Click:Connect(function()
+    pcall(function()
+        if setclipboard then setclipboard(TG_URL) end
+    end)
+    notify("ссылка скопирована")
+end)
+
+create("TextLabel", {
+    Size = UDim2.new(1, -8, 0, 80 * UI_SCALE),
+    BackgroundColor3 = Color3.fromRGB(18, 20, 25),
+    BorderSizePixel = 0,
+    Text = "ReNdiHUB Release 1.0\nСоздатель: ReNdi\nРаспространять запрещено 🚫",
+    TextColor3 = Color3.fromRGB(180, 180, 190),
+    Font = Enum.Font.Gotham,
+    TextSize = 12 * UI_SCALE,
+    TextWrapped = true,
+}, Tabs.LINKS)
+
+selectTab("AIM")
+
+-- WINDOW CONTROLS
+WM.MouseButton1Click:Connect(function()
+    if Main.Visible then
+        Main.Visible = false
+    else
+        Main.Visible = true
+        Main.Size = UDim2.new(0, 0, 0, 0)
+        TweenService:Create(Main, TweenInfo.new(0.35,
+            Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+            Size = UDim2.new(0, MAIN_W * UI_SCALE, 0, MAIN_H * UI_SCALE),
+        }):Play()
+    end
+end)
+
+CloseBtn.MouseButton1Click:Connect(function()
+    clearNoob()
+    if sunsetConn then sunsetConn:Disconnect() end
+    ScreenGui:Destroy()
+    WMGui:Destroy()
+    _G.ReNdiHUB = nil
+end)
+
+for key, btn in pairs(TabButtons) do
+    btn.MouseButton1Click:Connect(function() selectTab(key) end)
+end
+
+-- ESP
+local espObjects = {}
+local function cleanupFor(plr)
+    if espObjects[plr] then
+        for _, o in pairs(espObjects[plr]) do pcall(function() o:Remove() end) end
+        espObjects[plr] = nil
+    end
+end
+local function cleanupAll()
+    for plr in pairs(espObjects) do cleanupFor(plr) end
+    espObjects = {}
+end
+local function getObj(plr, key, kind)
+    espObjects[plr] = espObjects[plr] or {}
+    if not espObjects[plr][key] and Drawing then
+        espObjects[plr][key] = Drawing.new(kind)
+    end
+    return espObjects[plr][key]
+end
+local function hideAll(plr)
+    if not espObjects[plr] then return end
+    for _, o in pairs(espObjects[plr]) do o.Visible = false end
+end
+
+RunService.RenderStepped:Connect(function()
+    if not Drawing then return end
+    if not Config.ESP then cleanupAll() return end
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr == LocalPlayer then continue end
+        if not isSpawned(plr) then cleanupFor(plr) continue end
+        local char = plr.Character
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        local head = char:FindFirstChild("Head")
+        if not hrp or not head then hideAll(plr) continue end
+        local dist = (Camera.CFrame.Position - hrp.Position).Magnitude
+        if dist > Config.MaxDist then hideAll(plr) continue end
+        local role = Config.ESPRoles and getRole(plr) or nil
+        local color = role and roleColor(role) or Color3.fromRGB(230, 230, 230)
+        local hp, hv = Camera:WorldToViewportPoint(head.Position + Vector3.new(0, 0.6, 0))
+        local bp, bv = Camera:WorldToViewportPoint(hrp.Position - Vector3.new(0, 3.2, 0))
+        if not hv or not bv then hideAll(plr) continue end
+        local h = math.abs(bp.Y - hp.Y)
+        local w = h * 0.55
+        local x = hp.X - w / 2
+        local y = hp.Y
+        if Config.ESPBox then
+            local box = getObj(plr, "box", "Square")
+            if box then
+                box.Size = Vector2.new(w, h)
+                box.Position = Vector2.new(x, y)
+                box.Color = color
+                box.Thickness = 2
+                box.Filled = false
+                box.Transparency = 1
+                box.Visible = true
+            end
+        end
+        if Config.ESPName then
+            local name = getObj(plr, "name", "Text")
+            if name then
+                local roleTag = ""
+                if role == "murderer" then roleTag = " [MRD]"
+                elseif role == "sheriff" then roleTag = " [SHR]"
+                elseif role == "innocent" then roleTag = " [INN]" end
+                name.Text = plr.Name .. roleTag
+                name.Position = Vector2.new(x + w / 2, y - 16)
+                name.Size = 13
+                name.Color = color
+                name.Center = true
+                name.Outline = true
+                name.OutlineColor = Color3.fromRGB(0, 0, 0)
+                name.Visible = true
+            end
+        end
+        if Config.ESPDistance then
+            local d = getObj(plr, "dist", "Text")
+            if d then
+                d.Text = math.floor(dist) .. "m"
+                d.Position = Vector2.new(x + w / 2, y + h + 3)
+                d.Size = 12
+                d.Color = color
+                d.Center = true
+                d.Outline = true
+                d.OutlineColor = Color3.fromRGB(0, 0, 0)
+                d.Visible = true
+            end
+        end
+    end
+end)
+
+local function hookDeaths(plr)
+    if plr == LocalPlayer then return end
+    plr.CharacterAdded:Connect(function(char)
+        local hum = char:WaitForChild("Humanoid", 5)
+        if hum then hum.Died:Connect(function() cleanupFor(plr) end) end
+    end)
+end
+for _, plr in ipairs(Players:GetPlayers()) do hookDeaths(plr) end
+Players.PlayerAdded:Connect(hookDeaths)
+Players.PlayerRemoving:Connect(cleanupFor)
+
+-- AIM
+local function getClosestTarget()
+    local closest, closestDist = nil, math.huge
+    local center = viewport / 2
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer and isSpawned(plr) then
+            local skip = false
+            if Config.AIMOnlyMurderer and getRole(plr) ~= "murderer" then skip = true end
+            if not skip then
+                local head = plr.Character:FindFirstChild("Head")
+                if head then
+                    if not (Config.AIMVisible and not isVisible(head)) then
+                        local pos, vis = Camera:WorldToViewportPoint(head.Position)
+                        if vis then
+                            local sp = Vector2.new(pos.X, pos.Y)
+                            local d = (sp - center).Magnitude
+                            if d < Config.FOV and d < closestDist then
+                                closest, closestDist = head, d
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+    return closest
+end
+
+RunService.RenderStepped:Connect(function()
+    if not Config.AIM then return end
+    if Config.AIMRequireGun and not hasGun() then return end
+    local target = getClosestTarget()
+    if target then
+        local cf = CFrame.new(Camera.CFrame.Position, target.Position)
+        Camera.CFrame = Camera.CFrame:Lerp(cf, Config.Smooth)
+    end
+end)
+
+-- FLY / NOCLIP / SPEED
+local flyBV, flyBG
+RunService.Heartbeat:Connect(function()
+    if not Config.Fly then
+        if flyBV then flyBV:Destroy() flyBV = nil end
+        if flyBG then flyBG:Destroy() flyBG = nil end
+        return
+    end
+    local char = LocalPlayer.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    if not flyBV then
+        flyBV = Instance.new("BodyVelocity")
+        flyBV.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+        flyBV.Parent = hrp
+    end
+    if not flyBG then
+        flyBG = Instance.new("BodyGyro")
+        flyBG.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+        flyBG.P = 9e4
+        flyBG.Parent = hrp
+    end
+    flyBG.CFrame = Camera.CFrame
+    if IS_MOBILE then
+        flyBV.Velocity = Camera.CFrame.LookVector * Config.FlySpeed
+    else
+        local mv = Vector3.zero
+        if UserInputService:IsKeyDown(Enum.KeyCode.W) then mv += Camera.CFrame.LookVector end
+        if UserInputService:IsKeyDown(Enum.KeyCode.S) then mv -= Camera.CFrame.LookVector end
+        if UserInputService:IsKeyDown(Enum.KeyCode.A) then mv -= Camera.CFrame.RightVector end
+        if UserInputService:IsKeyDown(Enum.KeyCode.D) then mv += Camera.CFrame.RightVector end
+        if UserInputService:IsKeyDown(Enum.KeyCode.Space) then mv += Vector3.new(0, 1, 0) end
+        if mv.Magnitude > 0 then
+            flyBV.Velocity = mv.Unit * Config.FlySpeed
+        else
+            flyBV.Velocity = Vector3.zero
+        end
+    end
+end)
+
+RunService.Stepped:Connect(function()
+    local char = LocalPlayer.Character
+    if not char then return end
+    if Config.Noclip then
+        for _, p in ipairs(char:GetDescendants()) do
+            if p:IsA("BasePart") and p.CanCollide then p.CanCollide = false end
+        end
+    else
+        for _, p in ipairs(char:GetDescendants()) do
+            if p:IsA("BasePart") and not p.CanCollide then p.CanCollide = true end
+        end
+    end
+end)
+
+local DEFAULT_WS = 16
+RunService.Heartbeat:Connect(function()
+    local char = LocalPlayer.Character
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    if not hum then return end
+    if Config.Speed then
+        hum.WalkSpeed = Config.SpeedValue
+    else
+        if hum.WalkSpeed ~= DEFAULT_WS and hum.WalkSpeed ~= 0 then
+            hum.WalkSpeed = DEFAULT_WS
+        end
+    end
+end)
+
+-- SPIN
+local spinGyro, spinAngle = nil, 0
+RunService.Heartbeat:Connect(function(dt)
+    local char = LocalPlayer.Character
+    if not char then return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    if Config.Spin then
+        if not spinGyro or spinGyro.Parent ~= hrp then
+            if spinGyro then pcall(function() spinGyro:Destroy() end) end
+            spinGyro = Instance.new("BodyGyro")
+            spinGyro.MaxTorque = Vector3.new(0, math.huge, 0)
+            spinGyro.P = 50000
+            spinGyro.D = 500
+            spinGyro.Parent = hrp
+        end
+        spinAngle = spinAngle + dt * Config.SpinSpeed * 5
+        spinGyro.CFrame = CFrame.new(hrp.Position) * CFrame.Angles(0, spinAngle, 0)
+    elseif spinGyro then
+        pcall(function() spinGyro:Destroy() end)
+        spinGyro = nil
+        spinAngle = 0
+    end
+end)
+
+-- AUTO GRAB GUN
+local gunGrabBusy = false
+local savedOriginCF = nil
+
+local function grabGun()
+    if gunGrabBusy then return end
+    gunGrabBusy = true
+    task.spawn(function()
+        local sheriffAlive = false
+        for _, plr in ipairs(Players:GetPlayers()) do
+            if plr ~= LocalPlayer and isSpawned(plr) then
+                if getRole(plr) == "sheriff" then sheriffAlive = true break end
+            end
+        end
+        if sheriffAlive then
+            notify("шериф ещё жив")
+            gunGrabBusy = false
+            return
+        end
+
+        local char = LocalPlayer.Character
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        if not hrp then gunGrabBusy = false return end
+        savedOriginCF = hrp.CFrame
+
+        local gun
+        for _, obj in ipairs(Workspace:GetChildren()) do
+            local n = obj.Name:lower()
+            if (n == "gun" or n:find("gun") or n:find("revolver") or n:find("pistol"))
+            and (obj:IsA("Tool") or obj:IsA("Model")) then gun = obj break end
+        end
+        if not gun then
+            for _, obj in ipairs(Workspace:GetDescendants()) do
+                local n = obj.Name:lower()
+                if (n == "gun" or n:find("gun") or n:find("revolver") or n:find("pistol"))
+                and (obj:IsA("Tool") or obj:IsA("Model") or obj:IsA("BasePart")) then
+                    gun = obj break
+                end
+            end
+        end
+        if not gun then
+            notify("пистолет не найден")
+            gunGrabBusy = false
+            return
+        end
+
+        local part
+        if gun:IsA("Model") then
+            part = gun.PrimaryPart or gun:FindFirstChildWhichIsA("BasePart")
+        elseif gun:IsA("Tool") then
+            part = gun:FindFirstChild("Handle") or gun:FindFirstChildWhichIsA("BasePart")
+        elseif gun:IsA("BasePart") then
+            part = gun
+        end
+        if not part then gunGrabBusy = false return end
+
+        pcall(function()
+            hrp.CFrame = CFrame.new(part.Position + Vector3.new(0, 2, 0))
+        end)
+        task.wait(0.3)
+
+        if gun:IsA("Tool") then
+            pcall(function()
+                if gun.Parent ~= LocalPlayer.Backpack then
+                    gun.Parent = LocalPlayer.Backpack
+                end
+            end)
+            local hum = char:FindFirstChildOfClass("Humanoid")
+            if hum then pcall(function() hum:EquipTool(gun) end) end
+        end
+        task.wait(0.3)
+
+        if savedOriginCF then
+            pcall(function() hrp.CFrame = savedOriginCF end)
+        end
+
+        notify("пистолет забран")
+        gunGrabBusy = false
+        savedOriginCF = nil
+    end)
+end
+
+local grabBtn = create("TextButton", {
+    Size = UDim2.new(1, -8, 0, 40 * UI_SCALE),
+    BackgroundColor3 = DIM,
+    Text = "Автограб пистолета",
+    TextColor3 = COL,
+    Font = Enum.Font.GothamBold,
+    TextSize = 13 * UI_SCALE,
+    BorderSizePixel = 0,
+    AutoButtonColor = false,
+}, Tabs.FARM)
+create("UICorner", { CornerRadius = UDim.new(0, 10) }, grabBtn)
+create("UIStroke", { Color = DEEP, Thickness = 1, Transparency = 0.5 }, grabBtn)
+grabBtn.MouseButton1Click:Connect(grabGun)
+
+-- FARM
+local visitedPickups = {}
+
+local function findPickup(maxRange)
+    local char = LocalPlayer.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return nil end
+    local closest, closestDist = nil, maxRange or math.huge
+    for _, obj in ipairs(Workspace:GetDescendants()) do
+        if obj:IsA("BasePart") then
+            local n = obj.Name:lower()
+            if n:find("coin") or n:find("money") or n:find("cash")
+            or n:find("crystal") or n:find("diamond") or n:find("gem") then
+                if not visitedPickups[obj] then
+                    local d = (obj.Position - hrp.Position).Magnitude
+                    if d < closestDist then
+                        closest, closestDist = obj, d
+                    end
+                end
+            end
+        end
+    end
+    return closest
+end
+
+task.spawn(function()
+    while true do
+        if Config.CoinBot then
+            local char = LocalPlayer.Character
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                local pickup = findPickup(Config.CoinRange)
+                if pickup then
+                    visitedPickups[pickup] = true
+                    pcall(function()
+                        hrp.CFrame = CFrame.new(pickup.Position + Vector3.new(0, 2, 0))
+                    end)
+                    local count = 0
+                    for _ in pairs(visitedPickups) do count = count + 1 end
+                    if count > 100 then visitedPickups = {} end
+                else
+                    visitedPickups = {}
+                end
+            end
+            task.wait(Config.CoinDelay)
+        else
+            task.wait(0.1)
+        end
+    end
+end)
+
+LocalPlayer.CharacterAdded:Connect(function()
+    task.wait(1)
+    clearNoob()
+    if Config.CustomModel then applyNoob() end
+end)
+
+print("[ReNdiHUB] Release 1.0 loaded")
